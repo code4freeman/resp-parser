@@ -11,11 +11,6 @@ module.exports = class Parse extends Emitter{
 		 */
 		this.DEBUG = true;
 		/**
-		 * 是否缺失
-		 * 用作深度递归里边遇到resp长度不够的时候停止外层
-		 */
-		this.isLack = false;
-		/**
 		 * 返回数据累计 
 		 */
 		this.chunk = Buffer.from([]);
@@ -59,6 +54,7 @@ module.exports = class Parse extends Emitter{
 		 * 累加chunk （如果有）
 		 */
 		if (respChunk) {
+			if (this.deepStack.length > 0) this.deepStack = [];
 			if (!(respChunk instanceof Buffer)) {
 				const err = new Error("respChunk 必须为Buffer类型");
 				this.emit("error", err);
@@ -193,6 +189,7 @@ module.exports = class Parse extends Emitter{
 					byte = this.chunk[this.index + num];
 					if (num === length) {
 						if (byte === this.ascii.CR && this.chunk[this.index + num + 1] === this.ascii.LF) {
+							console.log(2222);
 							isBreak1 = true;
 							break;
 						}
@@ -275,19 +272,15 @@ module.exports = class Parse extends Emitter{
 		 * 末尾检测
 		 */
 		if (this.chunk.byteLength > 0) {
-			if (this.isLack) {
-				this.index = 0;
-				console.log("!!!");
+			if (this.index === 0) {
 				return;
 			}
 			if (this.chunk[this.index] === undefined) {
 				this.DEBUG && console.log("目前chunk长度不够，需要等待下次parse调用累积处理:\n" + this._getErrorPositionStr());
-				this.isLack = true;
+				this.index = 0;
 			} else {
-				console.log("为毛会来到parse");
 				if (this.asciis.includes(this.chunk[this.index])) {
-					console.log("来到parse了");
-					// this.parse();
+					this.parse();
 				} else {
 					let err = new Error("resp结构有错, 索引处应该是控制字符 :\n" + this._getErrorPositionStr());
 					this.emit("error", err);
