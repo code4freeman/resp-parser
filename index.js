@@ -71,6 +71,7 @@ module.exports = class Parse extends Emitter{
 		 * 处理 + 
 		 */
 		if (this.chunk[this.index] === this.ascii.ADD) {
+			this.DEBUG && console.log("+");
 			this.index ++;
 			let data = [], byte = null, isBreak = false;
 			while (this.index < this.chunk.byteLength) {
@@ -107,6 +108,7 @@ module.exports = class Parse extends Emitter{
 		 * 处理 - 
 		 */
 		if (this.chunk[this.index] === this.ascii.SUB) {
+			this.DEBUG && console.log("-");
 			this.index ++;
 			let data = [], byte = null, isBreak = false;
 			while (this.index < this.chunk.byteLength) {
@@ -140,6 +142,7 @@ module.exports = class Parse extends Emitter{
 		 * 处理 : 
 		 */
 		if (this.chunk[this.index] === this.ascii.COLON) {
+			this.DEBUG && console.log(":");
 			this.index ++;
 			let data = [], byte = null, isBreak = false;
 			while (this.index < this.chunk.byteLength) {
@@ -173,6 +176,7 @@ module.exports = class Parse extends Emitter{
 		 * 处理 $
 		 */
 		if (this.chunk[this.index] === this.ascii.DOLLAR) {
+			this.DEBUG && console.log("$");
 			this.index ++;
 			let data = [], byte = null, length = [], num = 0, isBreak = false;
 			while (this.index < this.chunk.byteLength) {
@@ -244,6 +248,7 @@ module.exports = class Parse extends Emitter{
 		 * 处理 * 
 		 */
 		if (this.chunk[this.index] === this.ascii.STAR) {
+			this.DEBUG && console.log("*");
 			this.index ++;
 			let length = 0, bytes = [], byte = null, isBreak = false;
 			while (this.index < this.chunk.byteLength) {
@@ -261,7 +266,7 @@ module.exports = class Parse extends Emitter{
 			if (isBreak) {
 				//压栈、递归
 				this.deepStack.push(this._buildDeepStackChild(length));
-				this.parse()
+				this.parse();
 				const lastChild = this.deepStack[this.deepStack.length - 1];
 				let isLack = false;
 				if (lastChild && lastChild.num < lastChild.length && this.chunk[this.index] === undefined) {
@@ -276,6 +281,8 @@ module.exports = class Parse extends Emitter{
 							last2Child.num ++;
 							last2Child.data.push(lastChild.data);
 							this.deepStack.pop();
+						} else {
+							break;
 						}
 					}
 					const firstChild = this.deepStack[0];
