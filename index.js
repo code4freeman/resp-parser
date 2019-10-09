@@ -262,31 +262,28 @@ module.exports = class Parse extends Emitter{
 				//压栈、递归
 				this.deepStack.push(this._buildDeepStackChild(length));
 				this.parse()
+				const lastChild = this.deepStack[this.deepStack.length - 1];
 				let isLack = false;
-				if (this.deepStack.length > 1) {
-					const 
-					lastChild = this.deepStack[this.deepStack.length - 1],
-					last2Child = this.deepStack[this.deepStack.length - 2];
-					if (lastChild.num === lastChild.length) {
-						last2Child.num ++;
-						last2Child.data.push(lastChild.data);
-						this.deepStack.pop();
-						return;
-					} else {
-						if (this.chunk[this.index] === undefined) {
-							isLack = true;
-						}
-					}
+				if (lastChild && lastChild.num < lastChild.length && this.chunk[this.index] === undefined) {
+					isLack = true;
 				}
 				if (!isLack) {
-					if (this.deepStack.length === 1) {
-						const firstChild = this.deepStack[0];
-						if (firstChild.num === firstChild.length) {
-							this.emit("data", firstChild.data);
-							this.deepStack = [];
-							this.chunk = this.chunk.slice(this.index);
-							this.index = 0;
+					while (this.deepStack.length > 1) {
+						const
+						lastChild = this.deepStack[this.deepStack.length -1],
+						last2Child = this.deepStack[this.deepStack.length - 2];
+						if (lastChild.num === lastChild.length) {
+							last2Child.num ++;
+							last2Child.data.push(lastChild.data);
+							this.deepStack.pop();
 						}
+					}
+					const firstChild = this.deepStack[0];
+					if (this.deepStack.length === 1 && firstChild.num === firstChild.length) {
+						this.emit("data", this.deepStack[this.deepStack.length - 1].data);
+						this.deepStack = [];
+						this.chunk = this.chunk.slice(this.index);
+						this.index = 0;
 					}
 				}
 			}
