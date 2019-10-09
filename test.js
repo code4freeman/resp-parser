@@ -1,20 +1,12 @@
-const parser = require("./parser")("_func", "_chunks");
 const fs = require("fs");
-function F()
-{
-    this._func = [];
-    this._chunks = Buffer.from([]);
-}
-F.prototype._parse = parser;
-F.prototype.test = function()
-{
-    let data = fs.readFileSync("./data.txt");
-    this._parse(data);
-}
+const Parse = require("./index");
 
+let parse = new Parse();
 
+parse.on("data", data => {
+	console.log("data事件 => ");
+	console.log(data);
+	fs.writeFileSync("json.json", JSON.stringify(data, null, 4));
+});
 
-
-//=========================================================================================
-let f = new F();
-f.test();
+parse.parse(fs.readFileSync("./data.text"));
