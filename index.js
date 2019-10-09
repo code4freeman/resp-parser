@@ -11,6 +11,10 @@ module.exports = class Parse extends Emitter{
 		 */
 		this.DEBUG = true;
 		/**
+		 * 是否短缺 
+		 */
+		this.isLack = false;
+		/**
 		 * 返回数据累计 
 		 */
 		this.chunk = Buffer.from([]);
@@ -54,7 +58,7 @@ module.exports = class Parse extends Emitter{
 		 * 累加chunk （如果有）
 		 */
 		if (respChunk) {
-			if (this.deepStack.length > 0) this.deepStack = [];
+			if (this.isLack) this.isLack = false;
 			if (!(respChunk instanceof Buffer)) {
 				const err = new Error("respChunk 必须为Buffer类型");
 				this.emit("error", err);
@@ -188,10 +192,29 @@ module.exports = class Parse extends Emitter{
 				while (num <= length) {
 					byte = this.chunk[this.index + num];
 					if (num === length) {
+						//长度不够
+						if (data.includes(this.ascii.CR) || data.includes(this.ascii.LF)) {
+							this.index += num;
+							let err = new Error("解析$时，实际数据与给定长度不符合:\n" + this._getErrorPositionStr());
+							this.emit("error", err);
+							throw err;
+						}
+						//chunk短缺
+						if (data.includes(undefined)) {
+							this.index += num;
+							isBreak = false;
+							break;
+						}
 						if (byte === this.ascii.CR && this.chunk[this.index + num + 1] === this.ascii.LF) {
-							console.log(2222);
 							isBreak1 = true;
 							break;
+						}
+						//过长
+						else {
+							this.index += num;
+							let err = new Error("解析$时，实际数据比给定长度要长:\n" + this._getErrorPositionStr());
+							this.emit("error", err);
+							throw err;
 						}
 					} else {
 						data.push(byte);
@@ -238,31 +261,32 @@ module.exports = class Parse extends Emitter{
 			if (isBreak) {
 				//压栈、递归
 				this.deepStack.push(this._buildDeepStackChild(length));
-				this.parse();
-				const lastChild = this.deepStack[this.deepStack.length - 1];
-				if (lastChild.num === lastChild.length) {
-					/**
-					 * 深度栈有元素，代表当前操作处于*递归当中
-					 * 把当前栈顶的数据压入到倒数第二个栈元素当中；并将栈顶元素出栈
-					 * 然后return出去
-					 */
-					if (this.deepStack.length > 1) {
-						const last2Child = this.deepStack[this.deepStack.length - 2];
+				this.parse()
+				let isLack = false;
+				if (this.deepStack.length > 1) {
+					const 
+					lastChild = this.deepStack[this.deepStack.length - 1],
+					last2Child = this.deepStack[this.deepStack.length - 2];
+					if (lastChild.num === lastChild.length) {
 						last2Child.num ++;
 						last2Child.data.push(lastChild.data);
 						this.deepStack.pop();
 						return;
-					} 
-					/**
-					 * 深度栈无元素，代表当前处于*递归完成返回
-					 * 获取数据，触发事件传出数据
-					 * 然后继续处理其他数据
-					 */
-					else {
-						this.emit("data", this.deepStack[0].data);
-						this.deepStack = [];
-						this.chunk = this.chunk.slice(this.index);
-						this.index = 0;
+					} else {
+						if (this.chunk[this.index] === undefined) {
+							isLack = true;
+						}
+					}
+				}
+				if (!isLack) {
+					if (this.deepStack.length === 1) {
+						const firstChild = this.deepStack[0];
+						if (firstChild.num === firstChild.length) {
+							this.emit("data", firstChild.data);
+							this.deepStack = [];
+							this.chunk = this.chunk.slice(this.index);
+							this.index = 0;
+						}
 					}
 				}
 			}
@@ -272,14 +296,19 @@ module.exports = class Parse extends Emitter{
 		 * 末尾检测
 		 */
 		if (this.chunk.byteLength > 0) {
-			if (this.index === 0) {
+			if (this.isLack) {
+				// console.log(">>1");
+				this.index = 0;
+				this.deepStack = [];
 				return;
 			}
 			if (this.chunk[this.index] === undefined) {
+				// console.log(">>2");
 				this.DEBUG && console.log("目前chunk长度不够，需要等待下次parse调用累积处理:\n" + this._getErrorPositionStr());
-				this.index = 0;
+				this.isLack = true;
 			} else {
 				if (this.asciis.includes(this.chunk[this.index])) {
+					// console.log(">>3");
 					this.parse();
 				} else {
 					let err = new Error("resp结构有错, 索引处应该是控制字符 :\n" + this._getErrorPositionStr());
@@ -310,14 +339,11 @@ module.exports = class Parse extends Emitter{
 	 * @return {String}
 	 */
 	_getErrorPositionStr () {
-		let str = "";
+		let chunk = [];
 		for (let i = 0; i < this.index + 1; i++) {
-			if (i === this.index) {
-				str += `'${this.chunk[this.index]}'`;
-			} else {
-				str += this.chunk[i] + " ";
-			}
+			chunk.push(this.chunk[i]);
 		}
+		let str = Buffer.from(chunk).toString() + " <- 问题在这个位置";
 		str += `\n位于resp索引: ${this.index}\n`;
 		if (this.deepStack.length > 0) {
 			str += `位于深度栈索引: ${this.deepStack[this.deepStack.length - 1]._deep}`;
