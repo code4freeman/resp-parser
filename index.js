@@ -2,7 +2,7 @@
 
 const {EventEmitter:Emitter} = require("events");
 
-module.exports = class Parse extends Emitter{
+module.exports = class Parser extends Emitter{
 
 	constructor () {
 		super();
@@ -71,7 +71,7 @@ module.exports = class Parse extends Emitter{
 		 * 处理 + 
 		 */
 		if (this.chunk[this.index] === this.ascii.ADD) {
-			this.DEBUG && console.log("+");
+			// this.DEBUG && console.log("+");
 			this.index ++;
 			let data = [], byte = null, isBreak = false;
 			while (this.index < this.chunk.byteLength) {
@@ -108,7 +108,7 @@ module.exports = class Parse extends Emitter{
 		 * 处理 - 
 		 */
 		if (this.chunk[this.index] === this.ascii.SUB) {
-			this.DEBUG && console.log("-");
+			// this.DEBUG && console.log("-");
 			this.index ++;
 			let data = [], byte = null, isBreak = false;
 			while (this.index < this.chunk.byteLength) {
@@ -142,7 +142,7 @@ module.exports = class Parse extends Emitter{
 		 * 处理 : 
 		 */
 		if (this.chunk[this.index] === this.ascii.COLON) {
-			this.DEBUG && console.log(":");
+			// this.DEBUG && console.log(":");
 			this.index ++;
 			let data = [], byte = null, isBreak = false;
 			while (this.index < this.chunk.byteLength) {
@@ -176,7 +176,7 @@ module.exports = class Parse extends Emitter{
 		 * 处理 $
 		 */
 		if (this.chunk[this.index] === this.ascii.DOLLAR) {
-			this.DEBUG && console.log("$");
+			// this.DEBUG && console.log("$");
 			this.index ++;
 			let data = [], byte = null, length = [], num = 0, isBreak = false;
 			while (this.index < this.chunk.byteLength) {
@@ -209,6 +209,7 @@ module.exports = class Parse extends Emitter{
 							isBreak = false;
 							break;
 						}
+						//正常
 						if (byte === this.ascii.CR && this.chunk[this.index + num + 1] === this.ascii.LF) {
 							isBreak1 = true;
 							break;
@@ -248,7 +249,7 @@ module.exports = class Parse extends Emitter{
 		 * 处理 * 
 		 */
 		if (this.chunk[this.index] === this.ascii.STAR) {
-			this.DEBUG && console.log("*");
+			// this.DEBUG && console.log("*");
 			this.index ++;
 			let length = 0, bytes = [], byte = null, isBreak = false;
 			while (this.index < this.chunk.byteLength) {
@@ -308,7 +309,9 @@ module.exports = class Parse extends Emitter{
 			}
 			if (this.chunk[this.index] === undefined) {
 				// console.log(">>2");
-				this.DEBUG && console.log("目前chunk长度不够，需要等待下次parse调用累积处理:\n" + this._getErrorPositionStr());
+				const warn = "目前chunk长度不够，需要等待下次parse调用累积处理:\n" + this._getErrorPositionStr();
+				this.DEBUG && console.log(warn);
+				this.emit("warn", warn);
 				this.isLack = true;
 			} else {
 				if (this.asciis.includes(this.chunk[this.index])) {

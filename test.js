@@ -1,12 +1,21 @@
 const fs = require("fs");
-const Parse = require("./index");
+const Parser = require("./index");
 
-let parse = new Parse();
+let parser = new Parser();
 
-parse.on("data", data => {
+parser.on("error", str => {
+	fs.appendFileSync("error.log", new Date().toLocaleTimeString() +"\n"+ str + "\n\n");
+});
+parser.on("warn", str => {
+	fs.appendFileSync("warn.log", new Date().toLocaleTimeString() +"\n"+ str + "\n\n");
+});
+parser.on("data", data => {
 	console.log("data事件 => ");
 	console.log(data);
 	fs.writeFileSync("json.json", JSON.stringify(data, null, 4));
 });
 
-parse.parse(fs.readFileSync("./data.text"));
+//取消debug模式（不显示调试信息）
+parser.DEBUG = false;
+
+parser.parse(fs.readFileSync("./data.text"));
