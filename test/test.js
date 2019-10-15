@@ -1,5 +1,5 @@
 const fs = require("fs");
-const Parser = require("./index");
+const Parser = require("../index");
 
 let parser = new Parser();
 

@@ -190,6 +190,48 @@ module.exports = class Parser extends Emitter{
 					this.index ++;
 				}
 			}
+			switch (length) {
+				case -1: 
+					if (this.deepStack.length > 0) {
+						//在递归解析*时候的逻辑
+						data = null;
+						const lastChild = this.deepStack[this.deepStack.length - 1];
+						lastChild.num ++;
+						lastChild.data.push(data);
+						this.index = this.index + 2;
+						if (lastChild.num === lastChild.length) return;
+					} else {
+						data = null;
+						this.emit("data", data);
+						this.chunk = this.chunk.slice(this.index + 2);
+						this.index = 0;
+					}
+					isBreak = false;
+				break;
+				case 0:
+					/**
+					 * $0\r\n\r\n有2组CRLF；需要判断后面的CRLF是否存在
+					 */
+					if (this.chunk[this.index + 2] !== this.ascii.CR || this.chunk[this.index + 3] !== this.ascii.LF) {
+						isBreak = false;
+						break;
+					}
+					if (this.deepStack.length > 0) {
+						//在递归解析*时候的逻辑
+						data = "";
+						const lastChild = this.deepStack[this.deepStack.length - 1];
+						lastChild.num ++;
+						lastChild.data.push(data);
+						this.index = this.index + 4;
+						if (lastChild.num === lastChild.length) return;
+					} else {
+						data = "";
+						this.emit("data", data);
+						this.chunk = this.chunk.slice(this.index + 4);
+						this.index = 0;
+					}
+					isBreak = false;
+			}
 			if (isBreak) {
 				this.index += 2;
 				let isBreak1 = false;
