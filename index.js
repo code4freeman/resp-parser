@@ -235,24 +235,27 @@ module.exports = class Parser extends Emitter{
 			if (isBreak) {
 				this.index += 2;
 				let isBreak1 = false;
+				/**
+				 * 这个while逻辑可以改写为直接按照长度来截取数据进行判断。从而省去while循环 
+				 */
 				while (num <= length) {
 					byte = this.chunk[this.index + num];
 					if (num === length) {
 						//长度不够
 						if (data.includes(this.ascii.CR) || data.includes(this.ascii.LF)) {
 							this.index += num;
-							let err = new Error("解析$时，实际数据与给定长度不符合:\n" + this._getErrorPositionStr());
+							let err = new Error("解析$时，实际数据与给定长度不符合, 指定长度数据中含有CRLF:\n" + this._getErrorPositionStr());
 							this.emit("error", err);
 							throw err;
 						}
 						//chunk短缺
-						if (data.includes(undefined)) {
+						if (data.includes(undefined) || this.chunk[this.index + num] !== this.ascii.CR || this.chunk[this.index + num + 1] !== this.ascii.LF) {
 							this.index += num;
 							isBreak = false;
 							break;
 						}
 						//正常
-						if (byte === this.ascii.CR && this.chunk[this.index + num + 1] === this.ascii.LF) {
+						if (this.chunk[this.index + num] === this.ascii.CR && this.chunk[this.index + num + 1] === this.ascii.LF) {
 							isBreak1 = true;
 							break;
 						}
@@ -293,17 +296,54 @@ module.exports = class Parser extends Emitter{
 		if (this.chunk[this.index] === this.ascii.STAR) {
 			// this.DEBUG && console.log("*");
 			this.index ++;
-			let length = 0, bytes = [], byte = null, isBreak = false;
+			let length = -1, bytes = [], byte = null, isBreak = false;
 			while (this.index < this.chunk.byteLength) {
 				byte = this.chunk[this.index];
 				if (byte === this.ascii.CR && this.chunk[this.index + 1] === this.ascii.LF) {
-					length = Number(Buffer.from(bytes).toString());
-					this.index += 2;
-					isBreak = true;
-					break;
+					if (bytes.length > 0) {
+						length = Number(Buffer.from(bytes).toString())
+						isBreak = true;
+						this.index += 2;
+						break;
+					} else {
+						//有CRLF结束，但没有指定数组长度时候
+						const err = new Error("解析*时候没有发现指定的长度：\n" + this._getErrorPositionStr());
+						this.emit("error", err);
+						throw err;
+					}
 				} else {
 					bytes.push(byte);
 					this.index ++;
+				}
+			}
+			//*指定长度为0时处理
+			if (length === 0) {
+				isBreak = false;
+				if (this.deepStack.length > 0) {
+					this.deepStack[this.deepStack.length - 1].data.push([]);
+					this.deepStack[this.deepStack.length - 1].num ++;
+					while (this.deepStack.length > 1) {
+						let lastChild = this.deepStack[this.deepStack.length - 1], last2Child = this.deepStack[this.deepStack.length - 2];
+						if (lastChild.length === lastChild.num) {
+							last2Child.data.push(lastChild.data);
+							last2Child.num ++;
+							this.deepStack.pop();
+						} else {
+							break;
+						}
+					}
+					if (this.deepStack.length === 1) {
+						const firstChild = this.deepStack[0];
+						if (firstChild.num === firstChild.length) {
+							this.emit("data", firstChild.data);
+							this.chunk = this.chunk.slice(this.index);
+							this.index = 0;
+						}
+					}
+				} else {
+					this.emit("data", []);
+					this.chunk = this.chunk.slice(this.index);
+					this.index = 0;
 				}
 			}
 			if (isBreak) {
@@ -389,7 +429,7 @@ module.exports = class Parser extends Emitter{
 	 */
 	_getErrorPositionStr () {
 		let chunk = [];
-		for (let i = 0; i < this.index + 1; i++) {
+		for (let i = 0; i < this.index; i++) {
 			chunk.push(this.chunk[i]);
 		}
 		let str = Buffer.from(chunk).toString() + " <- 问题在这个位置";
