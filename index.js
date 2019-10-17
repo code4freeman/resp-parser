@@ -356,25 +356,26 @@ module.exports = class Parser extends Emitter{
 					isLack = true;
 				}
 				if (!isLack) {
-					while (this.deepStack.length > 1) {
-						const
-						lastChild = this.deepStack[this.deepStack.length -1],
-						last2Child = this.deepStack[this.deepStack.length - 2];
-						if (lastChild.num === lastChild.length) {
-							last2Child.num ++;
-							last2Child.data.push(lastChild.data);
-							this.deepStack.pop();
-						} else {
-							break;
-						}
-					}
-					const firstChild = this.deepStack[0];
-					if (this.deepStack.length === 1 && firstChild.num === firstChild.length) {
-						this.emit("data", this.deepStack[this.deepStack.length - 1].data);
-						this.deepStack = [];
-						this.chunk = this.chunk.slice(this.index);
-						this.index = 0;
-					}
+					// 在处理超长数据时候会出现回调溢出， 这里需要修改
+					// while (this.deepStack.length > 1) {
+					// 	const
+					// 	lastChild = this.deepStack[this.deepStack.length -1],
+					// 	last2Child = this.deepStack[this.deepStack.length - 2];
+					// 	if (lastChild.num === lastChild.length) {
+					// 		last2Child.num ++;
+					// 		last2Child.data.push(lastChild.data);
+					// 		this.deepStack.pop();
+					// 	} else {
+					// 		break;
+					// 	}
+					// }
+					// const firstChild = this.deepStack[0];
+					// if (this.deepStack.length === 1 && firstChild.num === firstChild.length) {
+					// 	this.emit("data", this.deepStack[this.deepStack.length - 1].data);
+					// 	this.deepStack = [];
+					// 	this.chunk = this.chunk.slice(this.index);
+					// 	this.index = 0;
+					// }
 				}
 			}
 		}
