@@ -203,7 +203,7 @@ module.exports = class Parser extends Emitter{
 				if (!isBreak) {
 					this._emitWarn();
 					this.isLack = true;
-					break;
+					return;
 				}
 				switch (length) {
 					case -1: 
@@ -252,12 +252,10 @@ module.exports = class Parser extends Emitter{
 					this.index += 2;
 					let isBreak1 = false;
 
-					data = this.chunk.slice(this.index, this.index + length);
-					let _data = [];
-					for (let i = 0; i < data.byteLength; i++) {
-						_data.push(data[i]);
+					let buf = this.chunk.slice(this.index, this.index + length);
+					for (let i = 0; i < buf.byteLength; i++) {
+						data.push(buf[i]);
 					}
-					data = _data;
 
 					this.index += length;
 
@@ -266,7 +264,6 @@ module.exports = class Parser extends Emitter{
 					 * 直接弹错，终止运行
 					 */
 					if (data.includes(this.ascii.CR) || data.includes(this.ascii.LF)) {
-						console.log(11);
 						this._emitError();
 					}
 
@@ -275,7 +272,6 @@ module.exports = class Parser extends Emitter{
 					 * 那么直接弹出警告并return；等待下次调用的时候一起处理 
 					 */
 					if (data.includes(undefined)) {
-						console.log(22)
 						this._emitWarn();
 						this.isLack = true;
 						return;
@@ -285,7 +281,6 @@ module.exports = class Parser extends Emitter{
 					 * 如果下2个字节不为CRLF；那么直接弹出警告，终止运行，等待下次调用一起处理
 					 */
 					if (this.chunk[this.index] !== this.ascii.CR || this.chunk[this.index + 1] !== this.ascii.LF) {
-						console.log(33)
 						this._emitWarn();
 						this.isLack = true;
 						return;
@@ -353,7 +348,6 @@ module.exports = class Parser extends Emitter{
 						lastChild.data.push([]);
 
 						if (this.deepStack.length > 1) {
-							console.log("-->< 1");
 							if (lastChild.num === lastChild.length) {
 								last2Child.data.push(lastChild.data);
 								last2Child.num ++;
@@ -383,7 +377,6 @@ module.exports = class Parser extends Emitter{
 					const lastChild = this.deepStack[this.deepStack.length - 1];
 					let isLack = false;
 					if (lastChild && lastChild.num < lastChild.length && this.chunk[this.index] === undefined) {
-						console.log("isLack...");
 						isLack = true;
 					}
 					if (!isLack) {
@@ -393,7 +386,6 @@ module.exports = class Parser extends Emitter{
 						last2Child = this.deepStack[this.deepStack.length - 2];
 
 						if (this.deepStack.length > 1) {
-							console.log("-->< 1");
 							if (lastChild.num === lastChild.length) {
 								last2Child.data.push(lastChild.data);
 								last2Child.num ++;
@@ -401,12 +393,9 @@ module.exports = class Parser extends Emitter{
 								return;
 							}
 						}
-						// console.log(this.deepStack);
 						if (this.deepStack.length === 1) {
-							console.log("-->< 2");
 							const firstChild = this.deepStack[0];
 							if (firstChild.num === firstChild.length) {
-								console.log("-->< 3");
 								this.emit("data", firstChild.data);
 								this.chunk = this.chunk.slice(this.index);
 								this.index = 0;
@@ -419,12 +408,12 @@ module.exports = class Parser extends Emitter{
 			/**
 			 * 末尾检测
 			 */
-			if (this.isLack){
-				break
-			}
-			if (this.chunk.byteLength === 0) {
-				console.log(")))))))");
-				break;
+			if (
+				this.isLack ||
+				this.chunk[this.index] === undefined ||
+				this.chunk.byteLength === 0
+			) {
+				return;
 			}
 			
 		} // while end
